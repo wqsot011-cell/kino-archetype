@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Киноархетип: Кто твой двойник?</title>
+    <style>
+        :root {
+            --bg-color: #0f141c; --card-bg: #1a202c; --accent: #8da399;
+            --accent-glow: rgba(141, 163, 153, 0.2); --text-main: #f1f5f9;
+            --text-muted: #94a3b8; --gold-btn: #dfcbb5;
+        }
+        body {
+            background-color: var(--bg-color); color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;
+            background-image: radial-gradient(circle at 50% 15%, #242f41 0%, var(--bg-color) 75%);
+        }
+        .quiz-container {
+            background-color: var(--card-bg); padding: 32px 24px; border-radius: 20px;
+            max-width: 460px; width: 100%; text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border-top: 3px solid var(--accent);
+        }
+        h2 { font-size: 20px; font-weight: 600; margin: 0 0 24px 0; line-height: 1.5; }
+        .progress-container {
+            background-color: #111622; height: 5px; width: 100%;
+            margin-bottom: 30px; border-radius: 10px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background-color: var(--accent); width: 0%;
+            transition: width 0.4s ease; box-shadow: 0 0 8px var(--accent-glow);
+        }
+        .btn {
+            background-color: #232b3c; color: var(--text-main); border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px 20px; margin: 10px 0; width: 100%; border-radius: 12px;
+            cursor: pointer; font-size: 15px; font-weight: 500; text-align: left; box-sizing: border-box;
+        }
+        .btn:hover { background-color: #2c374b; border-color: var(--accent); }
+        .hidden { display: none; }
+        .loader {
+            border: 3px solid rgba(141, 163, 153, 0.1); border-top: 3px solid var(--accent);
+            border-radius: 50%; width: 40px; height: 40px; animation: spin 0.9s linear infinite; margin: 30px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .result-title { color: #ffffff; font-size: 22px; font-weight: 700; margin-top: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .character-img {
+            width: 100%; height: 280px; object-fit: cover; border-radius: 14px;
+            margin-top: 16px; border: 1px solid rgba(255, 255, 255, 0.08); background: #111622;
+        }
+        .result-desc { margin-top: 18px; line-height: 1.6; text-align: justify; font-size: 14px; color: var(--text-muted); }
+        .restart-btn {
+            text-align: center !important; background: var(--gold-btn) !important; color: #1a202c !important;
+            font-weight: 600 !important; border: none !important; margin-top: 25px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="quiz-container">
+    <div id="quiz-screen">
+        <div class="progress-container"><div id="progress" class="progress-fill"></div></div>
+        <h2 id="question-text">Инициализация калибровки...</h2>
+        <div id="answers-block"></div>
+    </div>
+
+    <div id="loading-screen" class="hidden">
+        <h2>Считывание матрицы...</h2>
+        <div class="loader"></div>
+        <p style="color: var(--accent); font-size: 14px;">Построение личностного графа...</p>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <h2 style="color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px;">Ваш киноархетип</h2>
+        <div id="result-text" class="result-title"></div>
+        <img id="result-img" class="character-img" src="" alt="Результат">
+        <p id="result-desc" class="result-desc"></p>
+        <button class="btn restart-btn" onclick="location.reload()">ПРОЙТИ ЕЩЕ РАЗ</button>
+    </div>
+</div>
+
+<script>
+    var questions = [
+        {
+            q: "1. Происходит внезапный кризис, рушатся старые договоренности. Ваша первая реакция?",
+            a: [
+                { text: "Брать контроль в свои руки, выстраивать новую структуру.", traits: ["ax_a"] },
+                { text: "Использовать хаос, в мутной воде проще поймать выгоду.", traits: ["ax_b"] },
+                { text: "Дистанцироваться, хладнокровно оценить риски со стороны.", traits: ["ax_c"] },
+                { text: "Собрать ключевых людей, распределить зоны ответственности.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "2. Какое утверждение точнее всего описывает ваше отношение к правилам?",
+            a: [
+                { text: "Правила и дисциплина — это единственный фундамент стабильности.", traits: ["ax_a"] },
+                { text: "Правила придуманы слабыми для ограничения сильных.", traits: ["ax_b"] },
+                { text: "Я живу по своему внутреннему кодексу, на внешние законы плевать.", traits: ["ax_c"] },
+                { text: "Правила можно менять, если это необходимо для дела или команды.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "3. Близкий человек совершает серьезную глупость, подставляя ваши общие интересы. Ваши действия?",
+            a: [
+                { text: "Устраню его из дела без лишних эмоций — бизнес есть бизнес.", traits: ["ax_c", "ax_a"] },
+                { text: "Устрою жесткий разнос, чтобы запомнил раз и навсегда.", traits: ["ax_b"] },
+                { text: "Молча вычеркну из жизни, предательство не обсуждается.", traits: ["ax_c"] },
+                { text: "Дам один шанс исправиться, но под моим жестким контролем.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "4. Что для вас является главным критерием жизненного успеха?",
+            a: [
+                { text: "Безупречный статус, влияние и уважение в обществе.", traits: ["ax_a"] },
+                { text: "Абсолютная свобода делать всё, что захочу, без рамок.", traits: ["ax_b"] },
+                { text: "Внутренняя автономия и независимость от чужих мнений.", traits: ["ax_c"] },
+                { text: "Масштаб созданного мной дела или организации.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "5. В какой обстановке вы чувствуете себя максимально в своей тарелке?",
+            a: [
+                { text: "Строгий минимализм, дорогие бренды, идеальный порядок.", traits: ["ax_a"] },
+                { text: "Динамичная среда, где всё постоянно меняется и бурлит.", traits: ["ax_b"] },
+                { text: "Уединенное место, где никто не нарушает мои границы.", traits: ["ax_c"] },
+                { text: "Кабинет руководителя, откуда координируются все процессы.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "6. Какой метод убеждения людей вы считаете самым эффективным?",
+            a: [
+                { text: "Логические аргументы, регламенты и демонстрация авторитета.", traits: ["ax_a"] },
+                { text: "Игра на эмоциях, слабостях и создание интриги.", traits: ["ax_b"] },
+                { text: "Личный пример и молчаливое превосходство в деле.", traits: ["ax_c"] },
+                { text: "Внушение чувства долга и преданности общей цели.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "7. Как вы относитесь к критике в свой адрес?",
+            a: [
+                { text: "Анализирую, если она обоснована — вношу коррективы в систему.", traits: ["ax_a"] },
+                { text: "Она меня забавляет или злит, но я не принимаю её всерьез.", traits: ["ax_b"] },
+                { text: "Мне абсолютно безразлично мнение окружающих.", traits: ["ax_c"] },
+                { text: "Использую её, чтобы понять слабые места в управлении.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "8. Выберите то, что вызывает у вас наибольшее отторжение:",
+            a: [
+                { text: "Беспорядок, непунктуальность и отсутствие четкого плана.", traits: ["ax_a"] },
+                { text: "Скука, рутина, серые будни и жесткие рамки.", traits: ["ax_b"] },
+                { text: "Навязчивые люди, лезущие в мою душу.", traits: ["ax_c"] },
+                { text: "Неорганизованность коллектива и безответственность.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "9. О чём вы думаете, когда смотрите на ночной мегаполис?",
+            a: [
+                { text: "Огромная система, где каждый винтик должен знать свое место.", traits: ["ax_a"] },
+                { text: "Мир возможностей, где можно легко затеряться или устроить шум.", traits: ["ax_b"] },
+                { text: "Я всего лишь наблюдатель в этом холодном потоке.", traits: ["ax_c"] },
+                { text: "Ресурс, который можно и нужно подчинить своим целям.", traits: ["ax_d"] }
+            ]
+        },
+        {
+            q: "10. Если бы о вашей жизни снимали фильм, в каком жанре он бы был?",
+            a: [
+                { text: "Стильный неонуарный или криминальный детектив.", traits: ["ax_a", "ax_c"] },
+                { text: "Динамичный психологический триллер с крутыми поворотами.", traits: ["ax_b"] },
+                { text: "Мрачная экзистенциальная драма об одиночестве.", traits: ["ax_c"] },
+                { text: "Масштабная сага о восхождении к вершине власти.", traits: ["ax_d"] }
+            ]
+        }
+    ];
+
+    // Использование глобального прокси-сервера картинок для обхода CORS-ограничений на мобильных
+    var characters = {
+        "ax_a_ax_c": { 
+            title: "Томас Шелби", 
+            desc: "Феноменальный самоконтроль, холодный расчет и стальная воля. Вы просчитываете ходы на годы вперед, цените структуру и верность. Эмоции никогда не берут верх над вашим разумом.",
+            img: "https://images.weserv.nl/?url=https://i.pinimg.com/736x/cb/13/2a/cb132a07c082717a0efeb97e64147775.jpg"
+        },
+        "ax_a_ax_d": { 
+            title: "Брюс Уэйн", 
+            desc: "Системная дисциплина и скрытое лидерство. Вы строите свою жизнь как неприступную крепость, подчиняя ресурсы строгому кодексу чести. Вы берете ответственность за тех, кого защищаете.",
+            img: "https://images.weserv.nl/?url=https://i.pinimg.com/736x/83/8d/6d/838d6d63d66660fbbe41d4c2069b128c.jpg"
+        },
+        "ax_b_ax_c": { 
+            title: "Водитель (Драйв)", 
+            desc: "Стоицизм гордого одиночки. Вы глубоко верны внутренним принципам и презираете фальшивый пафос. Действуете бесшумно, решительно и готовы в одиночку пойти против течения всего мира.",
+            img: "https://images.weserv.nl/?url=https://i.pinimg.com/736x/eb/fa/69/ebfa69fa7f36fbdb4fb94c257b447605.jpg"
+        },
+        "ax_b_ax_d": { 
+            title: "Тайлер Дёрден", 
+            desc: "Взрывная харизма и бунтарский дух, способный разрушать устоявшиеся системы. Вы органически ненавидите рутину, легко управляете хаосом и готовы поставить на кон абсолютно всё ради идеи.",
+            img: "https://images.weserv.nl/?url=https://i.pinimg.com/736x/aa/60/ae/aa60aeab76a3d90234cf66dfdfc220df.jpg"
+        },
+        "ax_equal_c": { 
+            title: "Патрик Бэйтман", 
+            desc: "Идеальная внешняя маска порядка, скрывающая бушующий внутренний цинизм. Вы цените безупречный стиль, детали и статус, но эмоционально остаетесь абсолютно недосягаемы для толпы.",
+            img: "https://images.weserv.nl/?url=https://i.pinimg.com/736x/6d/b9/02/6db902ba87e416599b50b181db060c5b.jpg"
+        },
+        "ax_equal_d": { 
+            title: "Джон Уик", 
+            desc: "Профессионализм, доведенный до абсолюта. Человек дела и незыблемых принципов. Вы не ищете власти ради власти, но если ваши границы нарушены — вы уничтожите любую угрозу с хирургической точностью.",
+            img: "https://images.weserv.nl/?url=https://i.pinimg.com/736x/a2/12/37/a21237a67272895e69bfdf345339f99e.jpg"
+        },
+        "ax_high_a": { 
+            title: "Шерлок Холмс", 
+            desc: "Чистый интеллект, возведенный в абсолют. Вы видите закономерности там, где другие замечают лишь хаос. Каждая деталь вашей жизни подчинена логическому анализу.",
+            img: "https://images.weserv.nl/?url=https://i.pinimg.com/736x/b2/f6/b0/b2f6b0bf5a2a22216503c80e1cbaf047.jpg"
+        },
+        "ax_high_b": { 
+            title: "Джокер", 
+            desc: "Вы видите этот мир насквозь и понимаете, насколько хрупки социальные маски. Вы мастерски используете нестандартные ходы, ломаете шаблоны и не боитесь быть не понятым большинством.",
+            img: "https://images.weserv.nl/?url=https://i.pinimg.com/736x/bb/56/63/bb56637e1998dfc38217bb7d57845347.jpg"
+        }
+    };
+
+    var currentQ = 0;
+    var userTraits = { ax_a: 0, ax_b: 0, ax_c: 0, ax_d: 0 };
+
+    function selectAnswer(btnIndex) {
+        var cd = questions[currentQ].a[btnIndex];
+        for (var i = 0; i < cd.traits.length; i++) { userTraits[cd.traits[i]]++; }
+        currentQ++; showQuestion();
+    }
+
+    function showQuestion() {
+        if (currentQ < questions.length) {
+            document.getElementById("progress").style.width = ((currentQ / questions.length) * 100) + "%";
+            var qData = questions[currentQ];
+            document.getElementById("question-text").innerText = qData.q;
+            var ab = document.getElementById("answers-block"); ab.innerHTML = "";
+            for (var j = 0; j < qData.a.length; j++) {
+                var btn = document.createElement("button"); btn.className = "btn";
+                btn.innerText = qData.a[j].text; btn.setAttribute("onclick", "selectAnswer(" + j + ")");
+                ab.appendChild(btn);
+            }
+        } else {
+            document.getElementById("progress").style.width = "100%"; showLoading();
+        }
+    }
+
+    function showLoading() {
+        document.getElementById("quiz-screen").className = "hidden";
+        document.getElementById("loading-screen").className = "";
+        setTimeout(function() { showResult(); }, 2000);
+    }
+
+    function showResult() {
+        document.getElementById("loading-screen").className = "hidden";
+        document.getElementById("result-screen").className = "";
+        
+        var resKey = "";
+        if (userTraits.ax_a > 6) {
+            resKey = "ax_high_a";
+        } else if (userTraits.ax_b > 6) {
+            resKey = "ax_high_b";
+        } else if (userTraits.ax_a === userTraits.ax_b) {
+            resKey = userTraits.ax_c >= userTraits.ax_d ? "ax_equal_c" : "ax_equal_d";
+        } else {
+            var a1 = userTraits.ax_a >= userTraits.ax_b ? "ax_a" : "ax_b";
+            var a2 = userTraits.ax_c >= userTraits.ax_d ? "ax_c" : "ax_d";
+            resKey = a1 + "_" + a2;
+        }
+        
+        var res = characters[resKey] || characters["ax_a_ax_c"];
+        document.getElementById("result-img").src = res.img;
+        document.getElementById("result-text").innerText = res.title;
+        document.getElementById("result-desc").innerText = res.desc;
+    }
+
+    window.onload = function() { showQuestion(); };
+</script>
+</body>
+</html>
